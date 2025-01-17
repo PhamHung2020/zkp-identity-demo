@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifier</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .link {
+            margin-bottom: 20px;
+        }
+
+        .link-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .link-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .response {
+            margin-top: 20px;
+            padding: 3px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* input[type="file"] {
+            display: none;
+        } */
+
+        label {
+            display: inline-block;
+            background-color: #28a745;
+            color: white;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+
+        label:hover {
+            background-color: #218838;
+        }
+
+        h1 {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Verifier</h1>
+    <div class="container">
+        <div class="link">
+            <h4>Link to circuit files:</h4>
+            <div class="link-container">
+                <input id="copyLink" type="text" class="link-input" value="http://localhost:5000" readonly>
+            </div>
+            <button onclick="copyToClipboard()">Copy</button>
+        </div>
+
+        <div>
+            <label for="proof">Submit proof</label>
+            <input type="file" id="proof" accept=".json">
+        </div>
+
+        <div>
+            <label for="publicSignal">Submit public signals</label>
+            <input type="file" id="publicSignal" accept=".json">
+        </div>
+
+        <button onclick="checkProof()">Check proof</button>
+
+        <div id="responseContainer" class="response hidden">
+            <div id="responseText"></div>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard() {
+            const copyLink = document.getElementById('copyLink');
+            copyLink.select();
+            copyLink.setSelectionRange(0, 99999); // For mobile devices
+            document.execCommand('copy');
+            alert('Link copied to clipboard!');
+        }
+
+        async function checkProof() {
+            const proofFile = document.getElementById('proof').files[0];
+            const publicSignalFile = document.getElementById('publicSignal').files[0];
+
+            if (!proofFile || !publicSignalFile) {
+                alert('Proof file and public signal file is required');
+                return;
+            }
+
+            if (proofFile.type !== 'application/json' || publicSignalFile.type !== 'application/json') {
+                alert('Please upload a valid JSON file');
+                return;
+            }
+
+            try {
+                // const text = await file.text();
+                // const json = JSON.parse(text);
+
+                const proof = JSON.parse(await proofFile.text());
+                const publicSignal = JSON.parse(await publicSignalFile.text());
+                const body = {
+                    "proof": proof["proof"],
+                    "publicSignals": publicSignal["publicSignals"]
+                }
+
+                const response = await fetch('http://localhost:5000/verify-proof', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                const result = await response.json();
+                if (result.isValid) {
+                    displayResponse("Your proof is valid");
+                } else {
+                    displayResponse("Your proof is invalid");
+                }
+            } catch (error) {
+                alert('Error parsing or sending the JSON file: ' + error.message);
+            }
+        }
+
+        // document.getElementById('jsonUpload').addEventListener('change', async function(event) {
+        //     const file = event.target.files[0];
+
+        //     if (!file) {
+        //         alert('No file selected');
+        //         return;
+        //     }
+
+        //     if (file.type !== 'application/json') {
+        //         alert('Please upload a valid JSON file');
+        //         return;
+        //     }
+
+        //     try {
+        //         const text = await file.text();
+        //         const json = JSON.parse(text);
+        //         console.log(JSON.stringify({
+        //                 "proof": json
+        //             }));
+                
+
+        //         const response = await fetch('http://localhost:5000/verify-proof', {
+        //             method: 'POST',
+        //             headers: {
+        //                 'Content-Type': 'application/json',
+        //             },
+        //             body: JSON.stringify(json)
+        //         });
+
+        //         const result = await response.json();
+        //         if (result.isValid) {
+        //             displayResponse("Your proof is valid");
+        //         } else {
+        //             displayResponse("Your proof is invalid");
+        //         }
+        //     } catch (error) {
+        //         alert('Error parsing or sending the JSON file: ' + error.message);
+        //     }
+        // });
+
+        function displayResponse(data) {
+            const responseContainer = document.getElementById('responseContainer');
+            const responseText = document.getElementById('responseText');
+
+            responseContainer.classList.remove('hidden');
+            responseText.textContent = data;
+        }
+    </script>
+</body>
+</html>
